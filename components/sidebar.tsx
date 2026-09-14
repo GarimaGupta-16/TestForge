@@ -9,6 +9,7 @@ import {
   FolderGit2,
   LayoutGrid,
   ListChecks,
+  LogOut,
   MoreHorizontal,
   PenLine,
   Play,
@@ -19,9 +20,22 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { failures } from '@/lib/data'
+import { useAuth } from '@/context/auth-context'
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
+  const { user, profile } = useAuth()
+
+  const fullName = profile?.full_name || user?.user_metadata?.full_name || 'Garima Gupta'
+  const email = user?.email || 'garima@testforge.dev'
+  const firstName = fullName.split(' ')[0] || 'Garima'
+
+  const initials = fullName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'GG'
 
   const groups = [
     {
@@ -67,7 +81,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <span className="block text-[15px] font-bold tracking-tight text-foreground">TestForge</span>
           <span className="block text-[11px] text-muted-foreground/80">Autonomous testing</span>
         </span>
-
       </Link>
 
       <div className="px-4">
@@ -76,9 +89,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-secondary"
         >
           <span className="flex size-5 items-center justify-center rounded bg-primary/20 text-[10px] font-bold text-primary">
-            G
+            {firstName[0]}
           </span>
-          <span className="flex-1 truncate text-[13px] font-medium text-foreground">Garima&apos;s workspace</span>
+          <span className="flex-1 truncate text-[13px] font-medium text-foreground">{firstName}&apos;s workspace</span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
       </div>
@@ -145,14 +158,30 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-sidebar-border px-4 py-3.5">
-        <span className="flex size-8 items-center justify-center rounded-full bg-secondary border border-border text-[11px] font-semibold text-foreground">
-          GG
-        </span>
-        <span className="leading-tight">
-          <span className="block text-[12.5px] font-medium text-foreground">Garima Gupta</span>
-          <span className="block text-[11px] text-muted-foreground">Administrator</span>
-        </span>
+      <div className="flex items-center justify-between gap-3 border-t border-sidebar-border px-4 py-3.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt={fullName} className="size-8 rounded-full border border-border object-cover shrink-0" />
+          ) : (
+            <span className="flex size-8 items-center justify-center rounded-full bg-secondary border border-border text-[11px] font-semibold text-foreground shrink-0">
+              {initials}
+            </span>
+          )}
+          <span className="leading-tight min-w-0 flex-1">
+            <span className="block truncate text-[12.5px] font-medium text-foreground">{fullName}</span>
+            <span className="block truncate text-[11px] text-muted-foreground">{email}</span>
+          </span>
+        </div>
+
+        <form action="/auth/signout" method="POST">
+          <button
+            type="submit"
+            title="Sign Out"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="size-4" />
+          </button>
+        </form>
       </div>
     </div>
   )

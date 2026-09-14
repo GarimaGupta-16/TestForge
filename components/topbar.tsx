@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Bell, ChevronRight, GitPullRequest, Menu, Search } from 'lucide-react'
 import { SearchDialog, useShortcutKey } from '@/components/ui/search-dialog'
+import { UserMenu } from '@/components/auth/user-menu'
 import { failures } from '@/lib/data'
 
 const titles: Record<string, string> = {
@@ -45,7 +46,6 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           <span className="truncate font-semibold text-foreground">{title}</span>
         </nav>
 
-
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
@@ -81,9 +81,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
               <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-destructive" />
             )}
           </a>
-          <span className="flex size-8 items-center justify-center rounded-full bg-secondary border border-border text-[11px] font-semibold text-foreground">
-            GG
-          </span>
+          <UserMenu />
         </div>
       </header>
 
