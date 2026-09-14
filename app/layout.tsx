@@ -17,15 +17,16 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'TestPilot AI — Autonomous Testing',
+  title: 'TestForge — Autonomous Testing',
   description:
-    'TestPilot AI connects your repositories, generates Playwright suites, runs them autonomously and repairs what breaks.',
+    'TestForge connects your repositories, generates Playwright suites, runs them autonomously and repairs what breaks.',
   generator: 'v0.app',
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     apple: '/apple-icon.png',
   },
 }
+
 
 export const viewport: Viewport = {
   colorScheme: 'dark',

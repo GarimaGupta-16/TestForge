@@ -3,7 +3,8 @@ import { PageHeader, Panel, PrimaryButton } from '@/components/primitives'
 import { RunsTable } from '@/components/runs-table'
 import { recentRuns } from '@/lib/data'
 
-export const metadata = { title: 'Test Runs · TestPilot AI' }
+export const metadata = { title: 'Test Runs · TestForge' }
+
 
 const summary = [
   { label: 'Runs today', value: '14', hint: '4 triggered by push' },
@@ -34,9 +35,9 @@ export default function TestRunsPage() {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {summary.map((item) => (
-          <article key={item.label} className="panel p-5">
-            <p className="text-[12.5px] text-muted-foreground">{item.label}</p>
-            <p className="mt-3 text-[28px] font-semibold leading-none tracking-tight">
+          <article key={item.label} className="panel p-5 transition-all duration-150 hover:border-border-strong">
+            <p className="text-[12.5px] font-medium text-muted-foreground">{item.label}</p>
+            <p className="mt-3 text-3xl font-bold leading-none tracking-tight font-mono text-foreground">
               {item.value}
             </p>
             <p className="mt-3 text-[11.5px] text-muted-foreground">{item.hint}</p>
@@ -45,16 +46,16 @@ export default function TestRunsPage() {
       </div>
 
       <section className="panel mb-6 overflow-hidden">
-        <div className="flex items-start justify-between gap-4 px-5 py-5">
+        <div className="flex items-center justify-between gap-4 border-b border-border/60 px-5 py-4">
           <div>
-            <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              <Activity className="size-3.5" />
+            <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+              <Activity className="size-3.5 text-primary" />
               Execution history
             </p>
-            <h2 className="mt-2 text-[17px] font-semibold">All runs</h2>
+            <h2 className="mt-1 text-[16px] font-semibold text-foreground">All runs</h2>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-info/12 px-2 py-1 text-[11.5px] font-medium text-info">
-            <span className="size-1.5 animate-pulse rounded-full bg-current" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-info/20 bg-info/10 px-2.5 py-0.5 text-[11.5px] font-medium text-info">
+            <span className="size-1.5 animate-pulse rounded-full bg-info" />
             1 running
           </span>
         </div>
@@ -62,19 +63,20 @@ export default function TestRunsPage() {
       </section>
 
       <Panel eyebrow="Live output" eyebrowIcon={Terminal} title="#RUN-1024 · QuizLit">
-        <ul className="scroll-thin max-h-72 space-y-2 overflow-y-auto rounded-lg bg-[#070a0f] p-4 font-mono text-[12px] leading-relaxed">
+        <ul className="scroll-thin max-h-72 space-y-2 overflow-y-auto rounded-lg border border-border bg-[#070b12] p-4 font-mono text-[12px] leading-relaxed">
           {logLines.map((line) => (
             <li key={line.t} className="flex gap-3">
-              <span className="shrink-0 text-muted-foreground/70">{line.t}</span>
-              <span className="text-foreground/85">{line.text}</span>
+              <span className="shrink-0 text-muted-foreground/60">{line.t}</span>
+              <span className="text-foreground/90">{line.text}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-4 flex items-center gap-2 text-[12px] text-muted-foreground">
-          <Clock className="size-3.5" />
+        <p className="mt-4 flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
+          <Clock className="size-3.5 text-primary" />
           Streaming from the active Browserbase session.
         </p>
       </Panel>
     </>
   )
 }
+

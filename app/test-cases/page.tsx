@@ -2,7 +2,8 @@ import { Sparkles } from 'lucide-react'
 import { PageHeader, PrimaryButton } from '@/components/primitives'
 import { TestCasesTable } from '@/components/test-cases-table'
 
-export const metadata = { title: 'Test Cases · TestPilot AI' }
+export const metadata = { title: 'Test Cases · TestForge' }
+
 
 export default function TestCasesPage() {
   return (

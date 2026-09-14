@@ -29,8 +29,8 @@ export const repositories = [
     lastAnalyzed: '18m ago',
   },
   {
-    name: 'testpilot-web',
-    slug: 'GarimaGupta-16/testpilot-web',
+    name: 'testforge-web',
+    slug: 'GarimaGupta-16/testforge-web',
     stack: ['Next.js', 'JavaScript', 'MongoDB'],
     tests: 58,
     passRate: 96,
@@ -91,7 +91,7 @@ export const stats = [
 export const agentActivity = [
   {
     title: 'Repository analyzed',
-    detail: 'testpilot-web · 14 routes discovered',
+    detail: 'testforge-web · 14 routes discovered',
     time: '2m ago',
     kind: 'success' as const,
   },
@@ -168,7 +168,7 @@ export const recentRuns = [
   },
   {
     id: '#RUN-1020',
-    repository: 'testpilot-web',
+    repository: 'testforge-web',
     tests: 58,
     passed: 56,
     failed: 2,
@@ -436,7 +436,7 @@ export const agentTimeline = [
 ]
 
 export const agentTranscript = [
-  { role: 'agent' as const, text: 'Analyzed testpilot-web. Discovered 14 routes and 61 components.' },
+  { role: 'agent' as const, text: 'Analyzed testforge-web. Discovered 14 routes and 61 components.' },
   { role: 'agent' as const, text: 'Generated 32 scenarios. Prioritising authentication and checkout.' },
   { role: 'user' as const, text: 'Focus on the login regression from RUN-1024.' },
   {

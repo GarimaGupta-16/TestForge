@@ -25,9 +25,9 @@ const icons = {
 }
 
 const tones = {
-  violet: { wrap: 'bg-primary/12 text-[#a58cff]', bar: 'bg-primary/70' },
-  green: { wrap: 'bg-success/12 text-success', bar: 'bg-success/70' },
-  amber: { wrap: 'bg-warning/12 text-warning', bar: 'bg-warning/70' },
+  violet: { wrap: 'bg-primary/10 text-primary border border-primary/20', bar: 'bg-primary' },
+  green: { wrap: 'bg-success/10 text-success border border-success/20', bar: 'bg-success' },
+  amber: { wrap: 'bg-warning/10 text-warning border border-warning/20', bar: 'bg-warning' },
 }
 
 export function PipelineStrip() {
@@ -37,17 +37,17 @@ export function PipelineStrip() {
         const Icon = icons[step.icon]
         return (
           <div key={step.label} className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-[#a58cff]">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
               <Icon className="size-[15px]" />
             </span>
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-[13px] font-medium">{step.label}</span>
+              <span className="block truncate text-[13px] font-semibold text-foreground">{step.label}</span>
               <span className="block truncate text-[11.5px] text-muted-foreground">
                 {step.value}
               </span>
             </span>
             {i < pipeline.length - 1 && (
-              <ChevronRight className="ml-auto hidden size-4 shrink-0 text-muted-foreground/40 xl:block" />
+              <ChevronRight className="ml-auto hidden size-4 shrink-0 text-muted-foreground/30 xl:block" />
             )}
           </div>
         )
@@ -63,7 +63,7 @@ function Sparkline({ data, className }: { data: number[]; className: string }) {
       {data.map((v, i) => (
         <span
           key={i}
-          className={cn('w-[4px] rounded-sm', className)}
+          className={cn('w-[4px] rounded-sm opacity-90 transition-all hover:opacity-100', className)}
           style={{ height: `${(v / max) * 100}%` }}
         />
       ))}
@@ -79,7 +79,7 @@ export function StatCards() {
         const tone = tones[stat.tone]
         const Trend = stat.trend === 'up' ? TrendingUp : TrendingDown
         return (
-          <article key={stat.label} className="panel p-5">
+          <article key={stat.label} className="panel p-5 transition-all duration-150 hover:border-border-strong">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span
@@ -87,13 +87,13 @@ export function StatCards() {
                 >
                   <Icon className="size-[14px]" />
                 </span>
-                <span className="text-[13px] font-medium">{stat.label}</span>
+                <span className="text-[13px] font-medium text-muted-foreground">{stat.label}</span>
               </div>
-              <MoreHorizontal className="size-4 text-muted-foreground/60" />
+              <MoreHorizontal className="size-4 text-muted-foreground/50" />
             </div>
             <div className="mt-4 flex items-end justify-between gap-3">
               <div>
-                <p className="text-[34px] font-semibold leading-none tracking-tight">
+                <p className="text-3xl font-bold leading-none tracking-tight text-foreground font-mono">
                   {stat.value}
                 </p>
                 <p className="mt-3 flex items-center gap-1.5 whitespace-nowrap text-[11.5px] text-muted-foreground">
@@ -103,7 +103,7 @@ export function StatCards() {
                       stat.trend === 'up' ? 'text-success' : 'text-warning',
                     )}
                   />
-                  <span className="font-medium text-foreground/80">{stat.delta}</span>
+                  <span className="font-semibold text-foreground/90">{stat.delta}</span>
                   <span>Last 7 days</span>
                 </p>
               </div>
@@ -115,3 +115,4 @@ export function StatCards() {
     </div>
   )
 }
+

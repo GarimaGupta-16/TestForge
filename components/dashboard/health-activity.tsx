@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import {
   Activity,
   ArrowUpRight,
@@ -32,8 +33,8 @@ function Donut() {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[26px] font-semibold leading-none tracking-tight">{PASSING}%</span>
-        <span className="mt-1 text-[11.5px] text-muted-foreground">passing</span>
+        <span className="text-[26px] font-bold leading-none tracking-tight font-mono text-foreground">{PASSING}%</span>
+        <span className="mt-1 text-[11.5px] font-medium text-muted-foreground">passing</span>
       </div>
     </div>
   )
@@ -50,20 +51,20 @@ export function TestHealth() {
       eyebrow="Quality signal"
       eyebrowIcon={Gauge}
       title="Test health"
-      action={<MoreHorizontal className="size-4 text-muted-foreground/60" />}
+      action={<MoreHorizontal className="size-4 text-muted-foreground/50" />}
       className="lg:col-span-2"
     >
-      <div className="flex flex-wrap items-center gap-8 pt-3">
+      <div className="flex flex-wrap items-center gap-8 pt-1">
         <Donut />
         <div className="flex-1 space-y-3.5">
           {legend.map((item) => (
             <div key={item.label} className="flex items-center gap-3 text-[13px]">
               <span className={`size-2 rounded-full ${item.color}`} />
-              <span className="w-8 font-semibold tabular-nums">{item.value}</span>
+              <span className="w-8 font-semibold font-mono tabular-nums text-foreground">{item.value}</span>
               <span className="text-muted-foreground">{item.label}</span>
             </div>
           ))}
-          <p className="flex items-center gap-2 pt-2 text-[12.5px] text-success">
+          <p className="flex items-center gap-2 pt-2 text-[12.5px] font-medium text-success">
             <Zap className="size-3.5" />
             8.4% healthier than last week
           </p>
@@ -77,7 +78,7 @@ const kinds = {
   success: { Icon: CheckCircle2, className: 'text-success' },
   error: { Icon: XCircle, className: 'text-destructive' },
   running: { Icon: Activity, className: 'text-info' },
-  ai: { Icon: Sparkles, className: 'text-[#a58cff]' },
+  ai: { Icon: Sparkles, className: 'text-primary' },
 }
 
 export function AgentActivity() {
@@ -87,35 +88,36 @@ export function AgentActivity() {
       eyebrowIcon={Activity}
       title="AI Agent Activity"
       action={
-        <span className="inline-flex items-center gap-1.5 rounded-md bg-success/12 px-2 py-1 text-[11.5px] font-medium text-success">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-2.5 py-0.5 text-[11.5px] font-medium text-success">
           <span className="size-1.5 animate-pulse rounded-full bg-success" />
           Live
         </span>
       }
       className="lg:col-span-3"
     >
-      <ul className="space-y-4 pt-2">
+      <ul className="space-y-4 pt-1">
         {agentActivity.map((item) => {
           const { Icon, className } = kinds[item.kind]
           return (
             <li key={item.title} className="flex items-start gap-3">
               <Icon className={`mt-0.5 size-[17px] shrink-0 ${className}`} />
               <div className="min-w-0 flex-1">
-                <p className="text-[13.5px] font-medium">{item.title}</p>
+                <p className="text-[13.5px] font-medium text-foreground">{item.title}</p>
                 <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{item.detail}</p>
               </div>
-              <span className="shrink-0 text-[11.5px] text-muted-foreground">{item.time}</span>
+              <span className="shrink-0 text-[11.5px] font-mono text-muted-foreground">{item.time}</span>
             </li>
           )
         })}
       </ul>
-      <button
-        type="button"
-        className="mt-5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#a58cff] transition-opacity hover:opacity-80"
+      <Link
+        href="/ai-agent"
+        className="mt-5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary transition-opacity hover:opacity-80"
       >
         Open agent console
         <ArrowUpRight className="size-3.5" />
-      </button>
+      </Link>
     </Panel>
   )
 }
+

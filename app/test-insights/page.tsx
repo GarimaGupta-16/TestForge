@@ -2,7 +2,8 @@ import { BarChart3, Flame, Play, TrendingUp } from 'lucide-react'
 import { Meter, PageHeader, Panel, PrimaryButton } from '@/components/primitives'
 import { featureHealth, insights, passRateSeries, testCases } from '@/lib/data'
 
-export const metadata = { title: 'Test Insights · TestPilot AI' }
+export const metadata = { title: 'Test Insights · TestForge' }
+
 
 const flakiest = testCases.slice(0, 5).map((c, i) => ({
   ...c,
@@ -21,12 +22,12 @@ export default function TestInsightsPage() {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {insights.map((item) => (
-          <article key={item.label} className="panel p-5">
-            <p className="text-[12.5px] text-muted-foreground">{item.label}</p>
-            <p className="mt-3 text-[30px] font-semibold leading-none tracking-tight">
+          <article key={item.label} className="panel p-5 transition-all duration-150 hover:border-border-strong">
+            <p className="text-[12.5px] font-medium text-muted-foreground">{item.label}</p>
+            <p className="mt-3 text-3xl font-bold leading-none tracking-tight font-mono text-foreground">
               {item.value}
             </p>
-            <p className="mt-3 flex items-center gap-1.5 text-[11.5px] text-success">
+            <p className="mt-3 flex items-center gap-1.5 text-[11.5px] font-semibold text-success">
               <TrendingUp className="size-3.5" />
               {item.delta}
             </p>
@@ -44,26 +45,26 @@ export default function TestInsightsPage() {
           <div className="flex h-56 items-end gap-3 pt-4">
             {passRateSeries.map((d) => (
               <div key={d.day} className="flex h-full min-w-0 flex-1 flex-col items-center gap-2">
-                <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
+                <span className="text-[11px] font-semibold font-mono tabular-nums text-muted-foreground">
                   {d.pass}%
                 </span>
-                <div className="flex w-full max-w-[42px] flex-1 flex-col justify-end overflow-hidden rounded-md bg-secondary">
+                <div className="flex w-full max-w-[42px] flex-1 flex-col justify-end overflow-hidden rounded-md bg-secondary/60 border border-border/50">
                   <div
-                    className="w-full shrink-0 bg-destructive/50"
+                    className="w-full shrink-0 bg-destructive/60 transition-all duration-300"
                     style={{ height: `${d.fail}%` }}
                     aria-hidden="true"
                   />
                   <div
-                    className="w-full shrink-0 bg-success"
+                    className="w-full shrink-0 bg-success transition-all duration-300"
                     style={{ height: `${d.pass}%` }}
                     aria-hidden="true"
                   />
                 </div>
-                <span className="text-[11px] text-muted-foreground">{d.day}</span>
+                <span className="text-[11px] font-medium text-muted-foreground">{d.day}</span>
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center gap-5 border-t border-border pt-4 text-[12px] text-muted-foreground">
+          <div className="mt-4 flex items-center gap-5 border-t border-border/60 pt-4 text-[12px] text-muted-foreground">
             <span className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-success" /> Passed
             </span>
@@ -78,11 +79,11 @@ export default function TestInsightsPage() {
             <ul className="space-y-3 pt-1">
               {flakiest.map((t) => (
                 <li key={t.id} className="flex items-center gap-3">
-                  <span className="w-[74px] shrink-0 font-mono text-[11.5px] text-[#a58cff]">
+                  <span className="w-[74px] shrink-0 font-mono text-[11.5px] font-semibold text-primary">
                     {t.id}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[12.5px]">{t.test}</span>
-                  <span className="shrink-0 rounded-md bg-warning/12 px-2 py-0.5 text-[11px] font-medium text-warning">
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">{t.test}</span>
+                  <span className="shrink-0 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-warning">
                     {t.flakes}×
                   </span>
                 </li>
@@ -95,8 +96,8 @@ export default function TestInsightsPage() {
               {featureHealth.map((f) => (
                 <li key={f.feature}>
                   <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
-                    <span>{f.feature}</span>
-                    <span className="tabular-nums text-muted-foreground">{f.total}</span>
+                    <span className="font-medium text-foreground">{f.feature}</span>
+                    <span className="font-mono tabular-nums text-muted-foreground">{f.total}</span>
                   </div>
                   <Meter value={(f.total / 40) * 100} />
                 </li>
@@ -108,3 +109,4 @@ export default function TestInsightsPage() {
     </>
   )
 }
+
