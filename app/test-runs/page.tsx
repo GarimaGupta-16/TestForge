@@ -6,6 +6,7 @@ import { getUserTestRuns } from '@/lib/db/test-runs'
 import { getRepositories } from '@/lib/db/repositories'
 import { RepositoryFilter } from '@/components/repository-filter'
 import { TestRunsAutoRefresher } from '@/components/test-runs-auto-refresher'
+import { isTodayInAppTimezone } from '@/lib/utils/date'
 
 export const metadata = { title: 'Test Runs · TestForge' }
 
@@ -26,12 +27,8 @@ export default async function TestRunsPage({ searchParams }: TestRunsPageProps) 
   const repositories = await getRepositories()
   const runs = await getUserTestRuns(selectedRepoId)
 
-  // Calculate dynamic metrics from real runs
-  const todayStr = new Date().toISOString().split('T')[0]
-  const runsToday = runs.filter((r) => {
-    const d = r.started_at ? new Date(r.started_at).toISOString().split('T')[0] : ''
-    return d === todayStr
-  }).length
+  // Calculate dynamic metrics from real runs using application local timezone (Asia/Kolkata)
+  const runsToday = runs.filter((r) => isTodayInAppTimezone(r.started_at)).length
 
   const completedRuns = runs.filter((r) => r.duration_seconds > 0)
   const avgDurationSeconds =

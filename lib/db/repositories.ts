@@ -347,5 +347,41 @@ export async function updateRepositoryTargetUrl(
   return { repository: updated, error: null }
 }
 
+/**
+ * Fetches all repository_analysis records for the authenticated user's repositories.
+ */
+export async function getUserRepositoryAnalyses(): Promise<any[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return []
+  }
+
+  const { data: repositories } = await supabase
+    .from('repositories')
+    .select('id')
+    .eq('user_id', user.id)
+
+  if (!repositories || repositories.length === 0) {
+    return []
+  }
+
+  const repoIds = repositories.map((r) => r.id)
+  const { data: analyses, error } = await supabase
+    .from('repository_analysis')
+    .select('*')
+    .in('repository_id', repoIds)
+
+  if (error || !analyses) {
+    return []
+  }
+
+  return analyses
+}
+
 
 

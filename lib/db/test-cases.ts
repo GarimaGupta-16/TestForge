@@ -251,3 +251,40 @@ export async function updateTestCaseStepTarget(
   return updated
 }
 
+/**
+ * Fetches all test_cases for the authenticated user's connected repositories.
+ */
+export async function getUserTestCases(): Promise<TestCaseRow[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return []
+  }
+
+  const { data: repositories, error: repoErr } = await supabase
+    .from('repositories')
+    .select('id')
+    .eq('user_id', user.id)
+
+  if (repoErr || !repositories || repositories.length === 0) {
+    return []
+  }
+
+  const repoIds = repositories.map((r) => r.id)
+  const { data: testCases, error: tcErr } = await supabase
+    .from('test_cases')
+    .select('*')
+    .in('repository_id', repoIds)
+    .order('created_at', { ascending: false })
+
+  if (tcErr || !testCases) {
+    return []
+  }
+
+  return testCases
+}
+
