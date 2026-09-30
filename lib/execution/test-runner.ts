@@ -14,7 +14,8 @@ export interface RunTestSuiteOptions {
   repositoryId: string
   testCases: any[]
   targetUrl?: string
-  authContext: ExecutionAuthContext
+  authContext?: ExecutionAuthContext
+  client?: any
   branch?: string
   commitSha?: string
 }
@@ -22,19 +23,22 @@ export interface RunTestSuiteOptions {
 /**
  * Server-only reusable test execution runner.
  * Executes a Playwright test suite and persists results using a request-independent
- * authenticated background Supabase client.
+ * user-authenticated or explicitly injected server Supabase client.
  *
  * Security & RLS Rules:
- * 1. Uses createBackgroundClient(authContext) to preserve RLS for the authenticated user.
+ * 1. Uses explicit client if provided or createBackgroundClient(authContext) for user RLS.
  * 2. Does NOT depend on Next.js request-scoped cookies().
- * 3. Does NOT use service-role keys.
- * 4. Idempotent guard prevents duplicate execution if run is already terminal.
- * 5. Top-level try/catch ensures test_run is marked 'failed' if an unhandled exception occurs.
+ * 3. Idempotent guard prevents duplicate execution if run is already terminal.
+ * 4. Top-level try/catch ensures test_run is marked 'failed' if an unhandled exception occurs.
  */
 export async function runTestSuiteInBackground(
   options: RunTestSuiteOptions
 ): Promise<SuiteExecutionSummary> {
-  const client = createBackgroundClient(options.authContext)
+  const client = options.client || (options.authContext ? createBackgroundClient(options.authContext) : null)
+
+  if (!client) {
+    throw new Error('[test-runner] Execution failed: Neither client nor authContext was provided.')
+  }
 
   // 1. Idempotency Guard: Verify run is not already terminal
   const existingRun = await getTestRunById(options.runId, client)

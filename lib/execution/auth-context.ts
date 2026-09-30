@@ -1,8 +1,8 @@
 /**
  * ExecutionAuthContext
  *
- * Minimal request-independent authentication context passed from an authenticated
- * Next.js HTTP request into background execution tasks.
+ * Request-independent authentication context passed from an authenticated
+ * Next.js HTTP user request into background execution tasks.
  *
  * Security Rules:
  * 1. Server-only execution state.

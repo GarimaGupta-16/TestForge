@@ -1,5 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import crypto from 'crypto'
+import { checkWebhookRepositoryEligibility } from '@/lib/db/webhook-repository'
+import { createWebhookPrivilegedClient } from '@/lib/db/webhook-client'
+import { getTestCasesByRepository } from '@/lib/db/test-cases'
+import { createTestRun } from '@/lib/db/test-runs'
+import { runTestSuiteInBackground } from '@/lib/execution/test-runner'
 
 /**
  * Verifies GitHub HMAC-SHA256 signature using timing-safe comparison.
@@ -29,9 +34,15 @@ function verifyGitHubSignature(secret: string, body: string, receivedHeader: str
 /**
  * POST /api/github/webhook
  *
- * Secure GitHub Webhook Receiver (Phase 8 Step 8.1)
- * Validates HMAC-SHA256 signature using GITHUB_WEBHOOK_SECRET.
- * Accepts push events on branches and filters out non-push, tag, and deletion events.
+ * Autonomous GitHub Webhook Dispatcher (Phase 8 Step 8.3)
+ * 1. Validates HMAC-SHA256 signature using GITHUB_WEBHOOK_SECRET.
+ * 2. Filters non-push, tag, and branch deletion events.
+ * 3. Verifies installation active state if installation ID is present.
+ * 4. Instantiate dedicated createWebhookPrivilegedClient ONLY after verification.
+ * 5. Maps full_name to TestForge repository record and evaluates test execution eligibility.
+ * 6. Creates test_run record with trigger_type = 'push' and status = 'running'.
+ * 7. Schedules non-blocking background Playwright suite execution via Next.js after().
+ * 8. Returns HTTP 202 Accepted with runId.
  */
 export async function POST(request: NextRequest) {
   // 1. Read environment secret
@@ -76,15 +87,15 @@ export async function POST(request: NextRequest) {
 
   const fullName = payload?.repository?.full_name
   const ref = payload?.ref
-  const after = payload?.after
+  const afterSha = payload?.after
 
-  if (!fullName || typeof fullName !== 'string' || !ref || typeof ref !== 'string' || !after || typeof after !== 'string') {
+  if (!fullName || typeof fullName !== 'string' || !ref || typeof ref !== 'string' || !afterSha || typeof afterSha !== 'string') {
     console.log('[GitHub Webhook] Push payload missing required fields')
     return NextResponse.json({ ok: true, accepted: false })
   }
 
   // 6. Filter branch deletion
-  if (after === '0000000000000000000000000000000000000000') {
+  if (afterSha === '0000000000000000000000000000000000000000') {
     console.log(`[GitHub Webhook] Ignored branch deletion push for ${fullName} (${ref})`)
     return NextResponse.json({ ok: true, accepted: false })
   }
@@ -96,19 +107,106 @@ export async function POST(request: NextRequest) {
   }
 
   const branch = ref.replace('refs/heads/', '')
-  const commitShaPrefix = after.slice(0, 7)
+  const commitShaPrefix = afterSha.slice(0, 7)
 
-  // Minimal safe log (NO secrets, signatures, keys, or tokens logged)
-  console.log('[GitHub Webhook] Accepted push event', {
-    repository: fullName,
-    branch,
-    commit: commitShaPrefix,
+  // 8. Optional GitHub installation verification if installation id provided
+  const installationId = payload?.installation?.id
+  if (typeof installationId === 'number' && installationId > 0) {
+    try {
+      const { getInstallationInfo } = await import('@/lib/github/client')
+      const { installation, errorCode } = await getInstallationInfo(installationId)
+      if (errorCode || !installation || !installation.isActive) {
+        console.log(`[GitHub Webhook] Ineligible push: GitHub installation ${installationId} inactive or invalid`)
+        return NextResponse.json({ ok: true, accepted: false, reason: 'not_eligible' })
+      }
+    } catch {
+      // Continue to DB eligibility check if client import is unavailable
+    }
+  }
+
+  // 9. Dedicated server-only privileged client instantiated ONLY after signature & event verification
+  let webhookClient: ReturnType<typeof createWebhookPrivilegedClient>
+  try {
+    webhookClient = createWebhookPrivilegedClient()
+  } catch (err: any) {
+    console.error('[GitHub Webhook] Server configuration error:', err?.message || err)
+    return NextResponse.json({ error: 'Webhook database client configuration error' }, { status: 500 })
+  }
+
+  // 10. Map repository and evaluate eligibility from database
+  const eligibility = await checkWebhookRepositoryEligibility(fullName, webhookClient)
+
+  if (!eligibility.isEligible || !eligibility.repository) {
+    console.log('[GitHub Webhook] Push event ineligible for autonomous execution', {
+      repository: fullName,
+      branch,
+      commit: commitShaPrefix,
+      reason: eligibility.reason,
+    })
+    return NextResponse.json({ ok: true, accepted: false, reason: 'not_eligible' })
+  }
+
+  const repository = eligibility.repository
+
+  // 11. Load test cases for mapped repository
+  const testCases = await getTestCasesByRepository(repository.id, webhookClient)
+  if (testCases.length === 0) {
+    console.log(`[GitHub Webhook] No test cases found for ${fullName}`)
+    return NextResponse.json({ ok: true, accepted: false, reason: 'not_eligible' })
+  }
+
+  // 12. Create test_run record with status = 'running' and trigger_type = 'push'
+  const testRun = await createTestRun(
+    {
+      repository_id: repository.id,
+      trigger_type: 'push',
+      branch,
+      commit_sha: afterSha,
+      status: 'running',
+      total_tests: testCases.length,
+      passed_tests: 0,
+      failed_tests: 0,
+      skipped_tests: 0,
+      duration_seconds: 0,
+      started_at: new Date().toISOString(),
+    },
+    webhookClient
+  )
+
+  if (!testRun) {
+    console.error(`[GitHub Webhook] Failed to create test_run record for ${fullName}`)
+    return NextResponse.json({ error: 'Failed to create test run record' }, { status: 500 })
+  }
+
+  console.log(`[GitHub Webhook] Created autonomous test run ${testRun.id} for ${fullName} (${branch}@${commitShaPrefix})`)
+
+  // 13. Schedule non-blocking background execution via Next.js after()
+  const targetUrl = repository.targetUrl || undefined
+
+  after(async () => {
+    try {
+      await runTestSuiteInBackground({
+        runId: testRun.id,
+        repositoryId: repository.id,
+        testCases,
+        targetUrl,
+        client: webhookClient,
+        branch,
+        commitSha: afterSha,
+      })
+    } catch (err) {
+      console.error(`[GitHub Webhook] Background execution error for run ${testRun.id}:`, err)
+    }
   })
 
-  // 8. Return neutral accepted response
-  return NextResponse.json({
-    ok: true,
-    event: 'push',
-    accepted: true,
-  })
+  // 14. Return HTTP 202 Accepted with running testRun metadata
+  return NextResponse.json(
+    {
+      ok: true,
+      accepted: true,
+      runStarted: true,
+      runId: testRun.id,
+    },
+    { status: 202 }
+  )
 }
