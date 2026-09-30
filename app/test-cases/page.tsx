@@ -1,9 +1,7 @@
-import { Sparkles } from 'lucide-react'
-import { PageHeader, PrimaryButton } from '@/components/primitives'
+import { PageHeader } from '@/components/primitives'
 import { TestCasesTable } from '@/components/test-cases-table'
 
 export const metadata = { title: 'Test Cases · TestForge' }
-
 
 export default function TestCasesPage() {
   return (
@@ -11,8 +9,7 @@ export default function TestCasesPage() {
       <PageHeader
         crumb="Test Cases"
         title="Test cases"
-        description="AI-generated and manually configured test scenarios."
-        action={<PrimaryButton icon={Sparkles}>Generate tests</PrimaryButton>}
+        description="Grounded AI-generated executable test cases derived from your repository analysis and TestPlan."
       />
       <TestCasesTable />
     </>

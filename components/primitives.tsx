@@ -121,7 +121,17 @@ export function Panel({
   )
 }
 
-const statusStyles: Record<Status, { bg: string; text: string; dot: string; pulse?: boolean }> = {
+const statusStyles: Record<string, { bg: string; text: string; dot: string; pulse?: boolean }> = {
+  Pending: {
+    bg: 'bg-amber-500/10 border-amber-500/20',
+    text: 'text-amber-400',
+    dot: 'bg-amber-400',
+  },
+  pending: {
+    bg: 'bg-amber-500/10 border-amber-500/20',
+    text: 'text-amber-400',
+    dot: 'bg-amber-400',
+  },
   Passed: {
     bg: 'bg-success/10 border-success/20',
     text: 'text-success',
