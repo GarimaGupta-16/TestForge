@@ -72,3 +72,53 @@ export async function updateAiRepairStatus(
   return data
 }
 
+/**
+ * Fetches all applied ai_repairs records for the authenticated user's repositories.
+ */
+export async function getUserAppliedAiRepairs(): Promise<AiRepairRow[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return []
+  }
+
+  const { data: repositories } = await supabase
+    .from('repositories')
+    .select('id')
+    .eq('user_id', user.id)
+
+  if (!repositories || repositories.length === 0) {
+    return []
+  }
+
+  const repoIds = repositories.map((r) => r.id)
+
+  const { data: failures } = await supabase
+    .from('failures')
+    .select('id')
+    .in('repository_id', repoIds)
+
+  if (!failures || failures.length === 0) {
+    return []
+  }
+
+  const failureIds = failures.map((f) => f.id)
+
+  const { data: repairs, error } = await supabase
+    .from('ai_repairs')
+    .select('*')
+    .in('failure_id', failureIds)
+    .eq('status', 'applied')
+
+  if (error || !repairs) {
+    return []
+  }
+
+  return repairs
+}
+
+
