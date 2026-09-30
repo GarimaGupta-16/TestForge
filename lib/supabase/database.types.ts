@@ -553,6 +553,7 @@ export type Database = {
           branch: string
           commit_sha: string | null
           completed_at: string | null
+          delivery_id: string | null
           duration_seconds: number
           failed_tests: number
           id: string
@@ -568,6 +569,7 @@ export type Database = {
           branch?: string
           commit_sha?: string | null
           completed_at?: string | null
+          delivery_id?: string | null
           duration_seconds?: number
           failed_tests?: number
           id?: string
@@ -583,6 +585,7 @@ export type Database = {
           branch?: string
           commit_sha?: string | null
           completed_at?: string | null
+          delivery_id?: string | null
           duration_seconds?: number
           failed_tests?: number
           id?: string

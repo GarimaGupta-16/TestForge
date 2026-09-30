@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { checkWebhookRepositoryEligibility } from '@/lib/db/webhook-repository'
 import { createWebhookPrivilegedClient } from '@/lib/db/webhook-client'
 import { getTestCasesByRepository } from '@/lib/db/test-cases'
-import { createTestRun } from '@/lib/db/test-runs'
+import { createTestRun, getTestRunByDeliveryId, getRunningTestRunForCommit } from '@/lib/db/test-runs'
 import { runTestSuiteInBackground } from '@/lib/execution/test-runner'
 
 /**
@@ -34,15 +34,18 @@ function verifyGitHubSignature(secret: string, body: string, receivedHeader: str
 /**
  * POST /api/github/webhook
  *
- * Autonomous GitHub Webhook Dispatcher (Phase 8 Step 8.3)
+ * Autonomous GitHub Webhook Dispatcher (Phase 8 Step 8.4.1)
  * 1. Validates HMAC-SHA256 signature using GITHUB_WEBHOOK_SECRET.
- * 2. Filters non-push, tag, and branch deletion events.
- * 3. Verifies installation active state if installation ID is present.
- * 4. Instantiate dedicated createWebhookPrivilegedClient ONLY after verification.
- * 5. Maps full_name to TestForge repository record and evaluates test execution eligibility.
- * 6. Creates test_run record with trigger_type = 'push' and status = 'running'.
- * 7. Schedules non-blocking background Playwright suite execution via Next.js after().
- * 8. Returns HTTP 202 Accepted with runId.
+ * 2. Requires and reads x-github-delivery header for push events.
+ * 3. Filters non-push, tag, and branch deletion events.
+ * 4. Verifies installation active state if installation ID is present.
+ * 5. Instantiate dedicated createWebhookPrivilegedClient ONLY after verification.
+ * 6. Maps full_name to TestForge repository record and evaluates test execution eligibility.
+ * 7. Checks for existing test_run with matching delivery_id (exact delivery idempotency).
+ * 8. Checks for existing running test_run for same commit (concurrent push safety).
+ * 9. Creates test_run record with delivery_id, trigger_type = 'push', status = 'running'.
+ * 10. Schedules non-blocking background Playwright suite execution via Next.js after().
+ * 11. Returns HTTP 202 Accepted with runId.
  */
 export async function POST(request: NextRequest) {
   // 1. Read environment secret
@@ -76,7 +79,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, accepted: false })
   }
 
-  // 5. Parse and validate push event payload
+  // 5. Require x-github-delivery header for push events
+  const deliveryId = request.headers.get('x-github-delivery')
+  if (!deliveryId || typeof deliveryId !== 'string' || deliveryId.trim() === '') {
+    console.error('[GitHub Webhook] Missing or invalid x-github-delivery header')
+    return NextResponse.json({ error: 'Missing x-github-delivery header' }, { status: 400 })
+  }
+
+  // 6. Parse and validate push event payload
   let payload: any
   try {
     payload = JSON.parse(rawBody)
@@ -94,13 +104,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, accepted: false })
   }
 
-  // 6. Filter branch deletion
+  // 7. Filter branch deletion
   if (afterSha === '0000000000000000000000000000000000000000') {
     console.log(`[GitHub Webhook] Ignored branch deletion push for ${fullName} (${ref})`)
     return NextResponse.json({ ok: true, accepted: false })
   }
 
-  // 7. Filter non-branch refs (e.g., tags)
+  // 8. Filter non-branch refs (e.g., tags)
   if (!ref.startsWith('refs/heads/')) {
     console.log(`[GitHub Webhook] Ignored non-branch push for ${fullName} (${ref})`)
     return NextResponse.json({ ok: true, accepted: false })
@@ -109,7 +119,7 @@ export async function POST(request: NextRequest) {
   const branch = ref.replace('refs/heads/', '')
   const commitShaPrefix = afterSha.slice(0, 7)
 
-  // 8. Optional GitHub installation verification if installation id provided
+  // 9. Optional GitHub installation verification if installation id provided
   const installationId = payload?.installation?.id
   if (typeof installationId === 'number' && installationId > 0) {
     try {
@@ -124,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 9. Dedicated server-only privileged client instantiated ONLY after signature & event verification
+  // 10. Dedicated server-only privileged client instantiated ONLY after signature & event verification
   let webhookClient: ReturnType<typeof createWebhookPrivilegedClient>
   try {
     webhookClient = createWebhookPrivilegedClient()
@@ -133,7 +143,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Webhook database client configuration error' }, { status: 500 })
   }
 
-  // 10. Map repository and evaluate eligibility from database
+  // 11. Map repository and evaluate eligibility from database
   const eligibility = await checkWebhookRepositoryEligibility(fullName, webhookClient)
 
   if (!eligibility.isEligible || !eligibility.repository) {
@@ -148,18 +158,49 @@ export async function POST(request: NextRequest) {
 
   const repository = eligibility.repository
 
-  // 11. Load test cases for mapped repository
+  // 12. Exact Delivery Idempotency Check
+  const existingDeliveryRun = await getTestRunByDeliveryId(deliveryId, webhookClient)
+  if (existingDeliveryRun) {
+    console.log(`[GitHub Webhook] Duplicate delivery detected for run ${existingDeliveryRun.id}`)
+    return NextResponse.json(
+      {
+        ok: true,
+        accepted: true,
+        duplicate: true,
+        runId: existingDeliveryRun.id,
+      },
+      { status: 200 }
+    )
+  }
+
+  // 13. Concurrent Active Run Check for same commit/branch
+  const activeRun = await getRunningTestRunForCommit(repository.id, branch, afterSha, webhookClient)
+  if (activeRun) {
+    console.log(`[GitHub Webhook] Concurrent active run detected for same commit: ${activeRun.id}`)
+    return NextResponse.json(
+      {
+        ok: true,
+        accepted: true,
+        duplicate: true,
+        runId: activeRun.id,
+      },
+      { status: 200 }
+    )
+  }
+
+  // 14. Load test cases for mapped repository
   const testCases = await getTestCasesByRepository(repository.id, webhookClient)
   if (testCases.length === 0) {
     console.log(`[GitHub Webhook] No test cases found for ${fullName}`)
     return NextResponse.json({ ok: true, accepted: false, reason: 'not_eligible' })
   }
 
-  // 12. Create test_run record with status = 'running' and trigger_type = 'push'
-  const testRun = await createTestRun(
+  // 15. Create test_run record with delivery_id, status = 'running', trigger_type = 'push'
+  let testRun = await createTestRun(
     {
       repository_id: repository.id,
       trigger_type: 'push',
+      delivery_id: deliveryId,
       branch,
       commit_sha: afterSha,
       status: 'running',
@@ -173,14 +214,41 @@ export async function POST(request: NextRequest) {
     webhookClient
   )
 
+  // Race condition fallback check if DB unique constraint prevented duplicate insert
   if (!testRun) {
+    const racedDeliveryRun = await getTestRunByDeliveryId(deliveryId, webhookClient)
+    if (racedDeliveryRun) {
+      return NextResponse.json(
+        {
+          ok: true,
+          accepted: true,
+          duplicate: true,
+          runId: racedDeliveryRun.id,
+        },
+        { status: 200 }
+      )
+    }
+
+    const racedActiveRun = await getRunningTestRunForCommit(repository.id, branch, afterSha, webhookClient)
+    if (racedActiveRun) {
+      return NextResponse.json(
+        {
+          ok: true,
+          accepted: true,
+          duplicate: true,
+          runId: racedActiveRun.id,
+        },
+        { status: 200 }
+      )
+    }
+
     console.error(`[GitHub Webhook] Failed to create test_run record for ${fullName}`)
     return NextResponse.json({ error: 'Failed to create test run record' }, { status: 500 })
   }
 
   console.log(`[GitHub Webhook] Created autonomous test run ${testRun.id} for ${fullName} (${branch}@${commitShaPrefix})`)
 
-  // 13. Schedule non-blocking background execution via Next.js after()
+  // 16. Schedule non-blocking background execution via Next.js after()
   const targetUrl = repository.targetUrl || undefined
 
   after(async () => {
@@ -199,7 +267,7 @@ export async function POST(request: NextRequest) {
     }
   })
 
-  // 14. Return HTTP 202 Accepted with running testRun metadata
+  // 17. Return HTTP 202 Accepted with running testRun metadata
   return NextResponse.json(
     {
       ok: true,

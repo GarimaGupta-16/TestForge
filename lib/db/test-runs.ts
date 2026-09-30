@@ -39,6 +39,48 @@ export async function getTestRunById(runId: string, client?: any): Promise<TestR
   return data
 }
 
+export async function getTestRunByDeliveryId(deliveryId: string, client?: any): Promise<TestRunRow | null> {
+  if (!deliveryId) return null
+  const supabase = client || (await createClient())
+  const { data, error } = await supabase
+    .from('test_runs')
+    .select('*')
+    .eq('delivery_id', deliveryId)
+    .maybeSingle()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data
+}
+
+export async function getRunningTestRunForCommit(
+  repositoryId: string,
+  branch: string,
+  commitSha: string,
+  client?: any
+): Promise<TestRunRow | null> {
+  const supabase = client || (await createClient())
+  const { data, error } = await supabase
+    .from('test_runs')
+    .select('*')
+    .eq('repository_id', repositoryId)
+    .eq('branch', branch)
+    .eq('commit_sha', commitSha)
+    .eq('trigger_type', 'push')
+    .eq('status', 'running')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data
+}
+
 export async function createTestRun(payload: TestRunInsert, client?: any): Promise<TestRunRow | null> {
   const supabase = client || (await createClient())
   const { data, error } = await supabase
